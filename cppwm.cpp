@@ -17,6 +17,19 @@ typedef struct Client
 	int indPrev, indNext; //the previous and next client in the list
 } Client;
 
+typedef struct FunctionKeys
+{
+	unsigned int modKey;
+	string killWMKey;
+	string focusWinKey;
+	string miniWinKey;
+	string restoreWinKey;
+	string killWinKey;
+	string moveWinKey;
+	string resizeWinKey;
+
+} FunctionKeys;
+
 //initing variables
 
 Display *dpy;
@@ -24,9 +37,22 @@ XWindowAttributes attr;
 XEvent ev, start;
 static Window root;
 int scr, ticker = 0, inactBorderThcknss = 1, actBorderThcknss = 1;
-unsigned long int inactiveHex = 0x000000, activeHex = 0x0000ff, lastFocusedClient, numMini, modKey, killWMKey, focusWinKey, miniWinKey, restoreWinKey, moveWinKey, killWinKey, resizeWinKey;
+unsigned long int inactiveHex = 0x000000, activeHex = 0x0000ff, lastFocusedClient, numMini;
 vector<Client> clients;
+FunctionKeys funcKeys;
 fstream config;
+
+string IntToString(int intIn)
+{
+	string stringOut = "";
+	std::stringstream converter;
+
+	converter << intIn;
+	converter >> stringOut;
+
+	return stringOut;
+}
+
 
 void readConfig()
 {
@@ -53,60 +79,61 @@ void readConfig()
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	modKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.modKey = atoi(data.c_str());
 
-	if(modKey == 1)
+	if( funcKeys.modKey == 1)
 	{
-		modKey = Mod4Mask;
+		funcKeys.modKey = Mod4Mask;
 	}
-	else if(modKey == 2)
+	else if(funcKeys.modKey == 2)
 	{
-		modKey = Mod2Mask;
+		funcKeys.modKey = Mod2Mask;
 	}
-	else if(modKey == 3)
+	else if(funcKeys.modKey == 3)
 	{
-		modKey = Mod3Mask;
+		funcKeys.modKey = Mod3Mask;
 	}
-	else if(modKey == 4)
+	else if(funcKeys.modKey == 4)
 	{
-		modKey = Mod4Mask;
+		funcKeys.modKey = Mod4Mask;
 	}
-	else if(modKey == 5)
+	else if(funcKeys.modKey == 5)
 	{
-		modKey = Mod5Mask;
+		funcKeys.modKey = Mod5Mask;
 	}
 	else
 	{
-		modKey = Mod4Mask;
+		funcKeys.modKey = Mod4Mask;
 	}
 
+	//For a key input put the ASCII CODE IN HERE
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	killWMKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.killWMKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	focusWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.focusWinKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	miniWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.miniWinKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	restoreWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.restoreWinKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	killWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.killWinKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	moveWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.moveWinKey = data;
 
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
-	resizeWinKey = strtoul(data.c_str(), nullptr, 10);
+	funcKeys.resizeWinKey = data;
 
 	config.close();
 }
@@ -146,12 +173,37 @@ int init() // inits the server and its basic attributes
 
 	// telling X to monitor these keys/buttons for input events
 
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("x")), modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabButton(dpy, 1, modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 2, modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 3, modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 4, modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 5, modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("a")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("b")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("c")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("d")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("e")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("f")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("g")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("h")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("i")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("j")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("k")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("l")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("m")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("n")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("o")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("p")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("q")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("r")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("s")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("t")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("u")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("v")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("w")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("x")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("y")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("z")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabButton(dpy, 1, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	XGrabButton(dpy, 2, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	XGrabButton(dpy, 3, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	XGrabButton(dpy, 4, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	XGrabButton(dpy, 5, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 	XGrabButton(dpy, 9, None, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
 	return 0;
@@ -353,30 +405,36 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 			winToClient(ev.xcreatewindow.window);
 		//	moveClientToPointer(ev.xcreatewindow.window, ev.xbutton.x_root, ev.xbutton.y_root); // this breaking shit so i removed it for now
 		}
-		/*
-		else if(ev.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym("x"))) // checking whether the key pressed is the "x" key and also makes sure its being pressed with Mod4
-		{
-			die(dpy);
-		}
-		*/
-		else if(ev.type == ButtonPress && ev.xbutton.subwindow != None) // checking whether a button was pressed and also if theres a window that exists where the button was pressed
+		else if((ev.type == ButtonPress && ev.xbutton.subwindow != None) || (ev.type == KeyPress && ev.xkey.subwindow != None)) // checking whether a button was pressed and also if theres a window that exists where the button was pressed
 		{
 			start = ev;
+			if(start.type == ButtonPress)
+			{
+				XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
+				XSetInputFocus(dpy, start.xbutton.subwindow, RevertToParent, CurrentTime);
+			}
+			else if(start.type == KeyPress)
+			{
+				XGetWindowAttributes(dpy, start.xkey.subwindow, &attr);
+				XSetInputFocus(dpy, start.xkey.subwindow, RevertToParent, CurrentTime);
+
+			}
+
 			XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
 			XSetInputFocus(dpy, start.xbutton.subwindow, RevertToParent, CurrentTime);
 
 
-			if(start.xbutton.button == 2 && start.xbutton.state == modKey) // checks if the second (middle mouse) button was pressed with the Mod4 key
+			if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey.c_str()))) // checks if the second (middle mouse) button was pressed with the Mod4 key
 			{
 				//kills the window
 				killWin(start.xbutton.subwindow);
 			}
-			else if(start.xbutton.button == focusWinKey)// checks whether button 9 (the front side button on my mouse) is pressed. this check does not need the Mod4 key to be pressed since i specified "None" in the init() function
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.focusWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey.c_str())))// checks whether button 9 (the front side button on my mouse) is pressed. this check does not need the Mod4 key to be pressed since i specified "None" in the init() function
 			{
 				// raises and focuses the window
 				focusWin(start.xbutton.subwindow);
 			}
-			else if(start.xbutton.button == restoreWinKey && start.xbutton.state == modKey) // look above ( or at the one after that for an explanation on what this is doing
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.restoreWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey.c_str()))) // look above ( or at the one after that for an explanation on what this is doing
 			{
 				//checks if the window is already minimized
 				if(attr.height == 15 && attr.width == 15)
@@ -384,7 +442,7 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 					restoreWin(start.xbutton.subwindow); // restores the window to its previous size if true
 				}
 			}
-			else if(start.xbutton.button == miniWinKey && start.xbutton.state == modKey)
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.miniWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.miniWinKey.c_str())))
 			{
 				//checks if the window is not minimized
 				if(attr.height != 15 && attr.width != 15)
@@ -393,7 +451,7 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 				}
 			}
 		}
-		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == modKey) // now this is where things get a little tricky. this function checks whether the mouse pointer was moved
+		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == funcKeys.modKey) // now this is where things get a little tricky. this function checks whether the mouse pointer was moved
 		{
 			//setting up vars for the x and y difference which will be used for resizing or moving the window
 			int xDiff = ev.xbutton.x_root - start.xbutton.x_root;
