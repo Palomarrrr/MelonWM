@@ -1,6 +1,12 @@
 all:
-	g++ -O3 -pedantic -Wall -I/usr/X11R6/include cppwm.cpp -L/usr/X11R6/lib -lX11 -o cppwm
+	c++ cppwm.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o cppwm
+	cc pbox.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o pbox
+
 install:
-	g++ -O3 -pedantic -Wall -I/usr/X11R6/include cppwm.cpp -L/usr/X11R6/lib -lX11 -o cppwm -std=c++17
-#	g++ -O3 -pedantic -Wall -I/usr/X11R6/include stable.cpp -L/usr/X11R6/lib -lX11 -o cppwmStable -std=c++17
+	c++ cppwm.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o cppwm
+	cc pbox.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o pbox
 	install -m 755 cppwm /usr/local/bin/cppwm
+	install -m 755 pbox /usr/local/bin/pbox
+
+config:
+	install -m 755 config ~/.config/cppwm/config
