@@ -24,7 +24,7 @@ XWindowAttributes attr;
 XEvent ev, start;
 static Window root;
 int scr, ticker = 0, inactBorderThcknss = 1, actBorderThcknss = 1;
-unsigned long int inactiveHex = 0x000000, activeHex = 0x0000ff, lastFocusedClient, numMini, modKey, killWMKey, focusWinKey, miniWinKey, restoreWinKey;
+unsigned long int inactiveHex = 0x000000, activeHex = 0x0000ff, lastFocusedClient, numMini, modKey, killWMKey, focusWinKey, miniWinKey, restoreWinKey, moveWinKey, killWinKey, resizeWinKey;
 vector<Client> clients;
 fstream config;
 
@@ -95,6 +95,18 @@ void readConfig()
 	config >> line;
 	data = line.substr(line.find_last_of(".") + 1);
 	restoreWinKey = strtoul(data.c_str(), nullptr, 10);
+
+	config >> line;
+	data = line.substr(line.find_last_of(".") + 1);
+	killWinKey = strtoul(data.c_str(), nullptr, 10);
+
+	config >> line;
+	data = line.substr(line.find_last_of(".") + 1);
+	moveWinKey = strtoul(data.c_str(), nullptr, 10);
+
+	config >> line;
+	data = line.substr(line.find_last_of(".") + 1);
+	resizeWinKey = strtoul(data.c_str(), nullptr, 10);
 
 	config.close();
 }
