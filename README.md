@@ -1,2 +1,3 @@
-# cppwm
-a rewrite of one of my projects (pwm) in c++. this is mostly a learning excersize and really shouldnt be used as a real wm at least in its current state
+# MelonWM
+A really bad wm that I made because why not.
+Currently very WIP but I've been spending a lot of time on it recently.
