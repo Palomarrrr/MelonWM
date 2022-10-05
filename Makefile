@@ -1,12 +1,13 @@
 all:
-	c++ cppwm.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o cppwm
-	cc pbox.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o pbox
+	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
+	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
 
 install:
-	c++ cppwm.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o cppwm
-	cc pbox.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o pbox
-	install -m 755 cppwm /usr/local/bin/cppwm
-	install -m 755 pbox /usr/local/bin/pbox
+	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
+	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
+	install -m 755 melon /usr/local/bin/melon
+	install -m 755 seed /usr/local/bin/seed
 
 config:
-	install -m 755 config ~/.config/cppwm/config
+	install melon.conf ~/.config/melon/
+	install seed.conf ~/.config/melon/

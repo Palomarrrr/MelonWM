@@ -4,6 +4,7 @@
 #include <fstream>
 #include <cmath>
 #include <string>
+#include <sstream>
 #include <X11/X.h>
 #include <X11/XKBlib.h>
 #include <X11/keysym.h>
