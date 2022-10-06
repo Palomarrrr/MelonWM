@@ -14,5 +14,4 @@ If you want to add the default configs to your .config directory type
 ## TO DO LIST 
 (This will grow as I think of more things to do)
 
-Add the option for command flags to seed
 Have the default directory set as ~/.config/melon on both the wm and seed
