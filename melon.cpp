@@ -45,27 +45,26 @@ void readConfig()
 {
 	config.open(configPath, std::ios::in);
 
-
 	string line, data;
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	inactiveHex = strtoul(data.c_str(), nullptr, 16);
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	inactBorderThcknss = atoi(data.c_str());
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	activeHex = strtoul(data.c_str(), nullptr, 16);
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	actBorderThcknss = atoi(data.c_str());
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.modKey = atoi(data.c_str());
 
 	if( funcKeys.modKey == 1)
@@ -94,23 +93,23 @@ void readConfig()
 	}
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.killWMKey = data;
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.focusWinKey = data;
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.miniWinKey = data;
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.restoreWinKey = data;
 
 	config >> line;
-	data = line.substr(line.find_last_of(".") + 1);
+	data = line.substr(line.find_last_of("=") + 1);
 	funcKeys.killWinKey = data;
 
 	config.close();
@@ -120,7 +119,11 @@ int findFlagRequest(char* argv)
 {
 	int requestType;
 
-	if(strcmp("-c", argv) == 0 || strcmp("--config", argv) == 0)
+	if(strcmp("-h", argv) == 0 || strcmp("--help", argv) == 0)
+	{
+		requestType = 0;
+	}
+	else if(strcmp("-c", argv) == 0 || strcmp("--config", argv) == 0)
 	{
 		requestType = 1;
 	}
@@ -128,13 +131,9 @@ int findFlagRequest(char* argv)
 	{
 		requestType = 2;
 	}
-	else if(strcmp("-h", argv) == 0 || strcmp("--help", argv) == 0)
-	{
-		requestType = 3;
-	}
 	else
 	{
-		requestType = 0;
+		requestType = -1;
 	}
 
 	return requestType;
@@ -142,7 +141,6 @@ int findFlagRequest(char* argv)
 
 int processFlags(int argc, char** argv)
 {
-
 	if(argc == 0)
 		return 1;
 
@@ -150,25 +148,26 @@ int processFlags(int argc, char** argv)
 	{
 		int request = findFlagRequest(argv[i]);
 
-		if(request == 1)
-		{
-			i++;
-			configPath = argv[i];
-		}
-		else if(request == 2)
-		{
-			configPath = "";
-		}
-		else if(request == 3)
-		{
-			cout << "C PLUS PLUS WINDOW MANAGER HELP MESSAGE\n" << endl;
-			cout << "\t-c /path/to/config/file | uses specific a config file instead of default path" << endl;
-			cout << "\t-n                      | ignores config file and uses the default settings" << endl;
-			cout << "\t-h                      | Displays this message" << endl;
-			return 2;
+		switch(request){
+			case 0:
+				cout << "MELON WINDOW MANAGER" << endl;
+				cout << "  -c /path/to/file  Uses a specific path for config " << endl;
+				cout << "  -n                Runs without a config" << endl;
+				cout << "  -h                Displays this message" << endl;
+				exit(1);
+			case 1:
+				i++;
+				configPath = argv[i];
+				return 0;
+			case 2:
+				configPath = "";
+				return 0;
+			default:
+				cout << "Invalid flag \"" << argv[i] << "\"" << endl;
+				cout << "Check -h for more information" << endl;
+				exit(1);
 		}
 	}
-
 	return 0;
 }
 
@@ -400,6 +399,7 @@ void  minimizeWin(Window win)
 
 	long unsigned int i = checkClient(win); // again look above
 
+
 	//saving the attributes of the current client
 
 	clients[i].dimensions[0] = attr.width;
@@ -422,9 +422,6 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 	configPath = configPath + "/.config/cppwm/config";
 	int request = processFlags(argc, argv);
 
-	if(request == 2)
-		return 1;
-
 	if(configPath != "")
 		readConfig();
 
@@ -433,7 +430,8 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 	start.xbutton.subwindow = None; //make sure that start.subwindow (the window that will be selected) is first set to null
 	start.xkey.subwindow = None; //make sure that start.subwindow (the window that will be selected) is first set to null
 
-	system("seed &");
+	//commented out for now. working on getting this fixed
+	//system("seed &");
 
 	while(True) // the main big boy loop to handle events and such
 	{
