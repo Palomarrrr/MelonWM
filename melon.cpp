@@ -1,11 +1,36 @@
-#include "common.hpp" // having a common header file makes things easier on my half
+//Headers needed to make things work
+//I can probably get rid of some of these and
+//probably will sometime in the future
 
+#include <iostream>
+#include <cstdlib>
+#include <vector>
+#include <fstream>
+#include <cmath>
+#include <string>
+#include <X11/X.h>
+#include <X11/XKBlib.h>
+#include <X11/keysym.h>
+#include <X11/XF86keysym.h>
+#include <X11/Xlib.h>
+#include <X11/Xatom.h>
+#include <X11/Xutil.h>
+#include <unistd.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+//This is used in resizing and moving windows
+#define MAX(a, b) ((a) > (b) ? (a) : (b))
+
+//This just makes things easier for me so I don't have to keep typing std::
 using std::cout;
 using std::endl;
 using std::string;
 using std::vector;
 using std::fstream;
 
+//This holds all data that I'd need to manipulate windows
 typedef struct Client
 {
 	Display *dpy; // pointer to the display the window is active on
@@ -17,6 +42,8 @@ typedef struct Client
 	int indPrev, indNext; //the previous and next client in the list
 } Client;
 
+//Stores all the keys that perform important functions
+//These all have really bad defaults just in case something breaks
 typedef struct FunctionKeys
 {
 	unsigned int modKey = Mod4Mask;
@@ -28,8 +55,8 @@ typedef struct FunctionKeys
 
 } FunctionKeys;
 
-//initing variables
-
+//Initing variables. I know I should make these as local as possible.
+//I'll be working on that sometime soon because it bothers me too.
 Display *dpy;
 XWindowAttributes attr;
 XEvent ev, start;
@@ -39,110 +66,215 @@ unsigned long int inactiveHex = 0x000000, activeHex = 0xf0fff0, lastFocusedClien
 string configPath;
 vector<Client> clients;
 FunctionKeys funcKeys;
-fstream config;
 
 void readConfig()
 {
-	config.open(configPath, std::ios::in);
+	FILE *config;
+	char *currLine = new char[200];
+	char *buffer = new char[200];
+	char *ptr;
+	int fieldToFill = 0;
 
-	string line, data;
+	cout << configPath << endl;
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	inactiveHex = strtoul(data.c_str(), nullptr, 16);
+	config = fopen(configPath.c_str(), "r");
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	inactBorderThcknss = atoi(data.c_str());
-
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	activeHex = strtoul(data.c_str(), nullptr, 16);
-
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	actBorderThcknss = atoi(data.c_str());
-
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.modKey = atoi(data.c_str());
-
-	if( funcKeys.modKey == 1)
+	if(config == NULL)
 	{
-		funcKeys.modKey = Mod4Mask;
-	}
-	else if(funcKeys.modKey == 2)
-	{
-		funcKeys.modKey = Mod2Mask;
-	}
-	else if(funcKeys.modKey == 3)
-	{
-		funcKeys.modKey = Mod3Mask;
-	}
-	else if(funcKeys.modKey == 4)
-	{
-		funcKeys.modKey = Mod4Mask;
-	}
-	else if(funcKeys.modKey == 5)
-	{
-		funcKeys.modKey = Mod5Mask;
-	}
-	else
-	{
-		funcKeys.modKey = Mod4Mask;
+		cout << "FAILED TO READ THE CONFIG FILE AT PATH: " << configPath << endl;
+		exit(1);
 	}
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.killWMKey = data;
+	memset(buffer, 0, sizeof(char) * 200);
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.focusWinKey = data;
+	while(fgets(currLine, 200, config) != NULL)
+	{
+		int j = 0;
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.miniWinKey = data;
+		if(currLine[0] == '\n' || currLine[0] == '#')
+		{
+			continue;
+		}
+		else if(strcmp(currLine, "[WM PARAMETERS]\n") == 0)
+		{
+			memset(currLine, 0, sizeof(char) * 200);
+			continue;
+		}
+		else if(strcmp(currLine, "[FUNCTION KEYS]\n") == 0)
+		{
+			memset(currLine, 0, sizeof(char) * 200);
+			continue;
+		}
+		else
+		{
+			for(int x = 0; x < strlen(currLine); x++)
+			{
+				if(currLine[x] == ' ')
+				{
+					continue;
+				}
+				else if(currLine[x] == '=')
+				{
+					if(strcmp(buffer, "BORDER_INACTIVE_COLOR") == 0)
+					{
+						fieldToFill = 1;
+					}
+					else if(strcmp(buffer, "BORDER_INACTIVE_THICKNESS") == 0)
+					{
+						fieldToFill = 2;
+					}
+					else if(strcmp(buffer, "BORDER_ACTIVE_COLOR") == 0)
+					{
+						fieldToFill = 3;
+					}
+					else if(strcmp(buffer, "BORDER_ACTIVE_THICKNESS") == 0)
+					{
+						fieldToFill = 4;
+					}
+					else if(strcmp(buffer, "MODIFIER_KEY") == 0)
+					{
+						fieldToFill = 5;
+					}
+					else if(strcmp(buffer, "KILL_WM_KEY") == 0)
+					{
+						fieldToFill = 6;
+					}
+					else if(strcmp(buffer, "FOCUS_WINDOW_BUTTON") == 0)
+					{
+						fieldToFill = 7;
+					}
+					else if(strcmp(buffer, "MINI_WINDOW_BUTTON") == 0)
+					{
+						fieldToFill = 8;
+					}
+					else if(strcmp(buffer, "RESTORE_WINDOW_BUTTON") == 0)
+					{
+						fieldToFill = 9;
+					}
+					else if(strcmp(buffer, "KILL_WINDOW_BUTTON") == 0)
+					{
+						fieldToFill = 10;
+					}
+					else
+					{
+						cout << "INVALID FIELD " << buffer << " FOUND" << endl;
+						exit(1);
+					}
+					memset(buffer, 0, sizeof(char) * 200);
+					j = 0;
+					continue;
+				}
+				else if(x == strlen(currLine) - 1)
+				{
+					switch(fieldToFill)
+					{
+						case 1:
+							inactiveHex = strtoul(buffer, &ptr, 16);
+							fieldToFill = 0;
+							break;
+						case 2:
+							inactBorderThcknss = atoi(buffer);
+							fieldToFill = 0;
+							break;
+						case 3:
+							activeHex = strtoul(buffer, &ptr, 16);
+							fieldToFill = 0;
+							break;
+						case 4:
+							actBorderThcknss = atoi(buffer);
+							fieldToFill = 0;
+							break;
+						case 5:
+							funcKeys.modKey = atoi(buffer);
+							switch(funcKeys.modKey)
+							{
+								case 1:
+									funcKeys.modKey = Mod1Mask;
+									break;
+								case 2:
+									funcKeys.modKey = Mod2Mask;
+									break;
+								case 3:
+									funcKeys.modKey = Mod3Mask;
+									break;
+								case 4:
+									funcKeys.modKey = Mod4Mask;
+									break;
+								case 5:
+									funcKeys.modKey = Mod5Mask;
+									break;
+								default:
+									funcKeys.modKey = Mod4Mask;
+									break;
+							}
+							break;
+						case 6:
+							funcKeys.killWMKey = buffer;
+							fieldToFill = 0;
+							break;
+						case 7:
+							funcKeys.focusWinKey = buffer;
+							fieldToFill = 0;
+							break;
+						case 8:
+							funcKeys.miniWinKey = buffer;
+							fieldToFill = 0;
+							break;
+						case 9:
+							funcKeys.restoreWinKey = buffer;
+							fieldToFill = 0;
+							break;
+						case 10:
+							funcKeys.killWinKey = buffer;
+							fieldToFill = 0;
+							break;
+						default:
+							cout << "INVALID ASSIGNMENT " << buffer << " TO FIELD " << fieldToFill << endl;
+							exit(1);
+					}
+					j = 0;
+					memset(buffer, 0, sizeof(char) * 200);
+					break;
+				}
+				buffer[j] = currLine[x];
+				j++;
+			}
+		}
+	}
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.restoreWinKey = data;
 
-	config >> line;
-	data = line.substr(line.find_last_of("=") + 1);
-	funcKeys.killWinKey = data;
-
-	config.close();
+	if(fclose(config) != 0)
+	{
+		cout << "THERE WAS AN ERROR CLOSING THE CONFIG FILE" << endl;
+	}
 }
 
 int findFlagRequest(char* argv)
 {
-	int requestType;
 
 	if(strcmp("-h", argv) == 0 || strcmp("--help", argv) == 0)
 	{
-		requestType = 0;
+		return 0;
 	}
-	else if(strcmp("-c", argv) == 0 || strcmp("--config", argv) == 0)
+	else if(strcmp("-c", argv) == 0)
 	{
-		requestType = 1;
+		return 1;
 	}
-	else if(strcmp("-n", argv) == 0 || strcmp("--no-config", argv) == 0)
+	else if(strcmp("-n", argv) == 0)
 	{
-		requestType = 2;
+		return 2;
 	}
 	else
 	{
-		requestType = -1;
+		return -1;
 	}
 
-	return requestType;
 }
 
-int processFlags(int argc, char** argv)
+void processFlags(int argc, char** argv)
 {
 	if(argc == 0)
-		return 1;
+		return;
 
 	for(int i = 1; i < argc; i++)
 	{
@@ -158,17 +290,16 @@ int processFlags(int argc, char** argv)
 			case 1:
 				i++;
 				configPath = argv[i];
-				return 0;
+				break;
 			case 2:
 				configPath = "";
-				return 0;
+				break;
 			default:
 				cout << "Invalid flag \"" << argv[i] << "\"" << endl;
 				cout << "Check -h for more information" << endl;
 				exit(1);
 		}
 	}
-	return 0;
 }
 
 
@@ -416,35 +547,51 @@ void  minimizeWin(Window win)
 	clients[i].isMini = true;
 }
 
-int main(int argc, char **argv) //aaaaaand here we go the big boy function
+//And heres the main function
+int main(int argc, char **argv)
 {
+	//Create the default config path. This is broken for some reason but I'll try and fix it soon
 	configPath = getenv("HOME");
-	configPath = configPath + "/.config/cppwm/config";
-	int request = processFlags(argc, argv);
+	configPath = configPath + "/.config/melon/melon.conf";
 
+	//Process the command line flags
+	processFlags(argc, argv);
+
+	//Check if the config path is blank in case the user ran the program with no config
 	if(configPath != "")
 		readConfig();
 
-	init(); //init the server
+	//Start the display server
+	init();
 
-	start.xbutton.subwindow = None; //make sure that start.subwindow (the window that will be selected) is first set to null
-	start.xkey.subwindow = None; //make sure that start.subwindow (the window that will be selected) is first set to null
+	//Make sure that start.subwindow is first set to None just in case
+	start.xbutton.subwindow = None;
+	start.xkey.subwindow = None;
 
-	//commented out for now. working on getting this fixed
+	//Commented out for now. Working on getting this fixed
 	//system("seed &");
 
-	while(True) // the main big boy loop to handle events and such
+	//The main loop that everything takes place in
+	while(True)
 	{
-		XNextEvent(dpy, &ev); // grabs next event
+		//Grabs next event
+		XNextEvent(dpy, &ev);
 
-		if(ev.type == CreateNotify) // checks if a window has just been mapped, scans the available clients to check if it
+		//Checks if a window has just been mapped, scans the available clients to check if it
+		if(ev.type == CreateNotify)
 		{
+			//Create a new client for the window created
 			winToClient(ev.xcreatewindow.window);
-		//	moveClientToPointer(ev.xcreatewindow.window, ev.xbutton.x_root, ev.xbutton.y_root); // this breaking shit so i removed it for now
+			//This breaking shit so I removed it for now
+			//moveClientToPointer(ev.xcreatewindow.window, ev.xbutton.x_root, ev.xbutton.y_root);
 		}
-		else if((ev.type == ButtonPress && ev.xbutton.subwindow != None) || (ev.type == KeyPress && ev.xkey.subwindow != None)) // checking whether a button was pressed and also if theres a window that exists where the button was pressed
+		//Checking whether a button was pressed and also if theres a window that exists where the button was pressed
+		else if((ev.type == ButtonPress && ev.xbutton.subwindow != None) || (ev.type == KeyPress && ev.xkey.subwindow != None))
 		{
+			//Save a copy of the current event. This will be used later for things like moving and resizing windows
 			start = ev;
+
+			//Assigns attributes based whether a key or mouse button was pressed
 			if(start.type == ButtonPress)
 			{
 				XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
@@ -456,57 +603,57 @@ int main(int argc, char **argv) //aaaaaand here we go the big boy function
 				XSetInputFocus(dpy, start.xkey.subwindow, RevertToParent, CurrentTime);
 			}
 
-			XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
-			XSetInputFocus(dpy, start.xbutton.subwindow, RevertToParent, CurrentTime);
-
-
-			if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey.c_str()))) // checks if the second (middle mouse) button was pressed with the Mod4 key
+			if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey.c_str())))
 			{
-				//kills the window
+				//Kills the selected window
 				killWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.focusWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey.c_str())))// checks whether button 9 (the front side button on my mouse) is pressed. this check does not need the Mod4 key to be pressed since i specified "None" in the init() function
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.focusWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey.c_str())))
 			{
-				// raises and focuses the window
+				//Raises and focuses the window
 				focusWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.restoreWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey.c_str()))) // look above ( or at the one after that for an explanation on what this is doing
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.restoreWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey.c_str())))
 			{
-				//checks if the window is already minimized
+				//Checks if the window is already minimized
 				if(attr.height == 15 && attr.width == 15)
 				{
-					restoreWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow); // restores the window to its previous size if true
+					//Restores the window to its previous size
+					restoreWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 				}
 			}
 			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.miniWinKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.miniWinKey.c_str())))
 			{
-				//checks if the window is not minimized
+				//Checks if the window is not minimized
 				if(attr.height != 15 && attr.width != 15)
 				{
+					//Minimizes the window
 					minimizeWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 				}
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWMKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWMKey.c_str())))// checks whether button 9 (the front side button on my mouse) is pressed. this check does not need the Mod4 key to be pressed since i specified "None" in the init() function
+			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWMKey.c_str()) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWMKey.c_str())))
 			{
+				//Kills the WM
 				die(dpy);
 			}
 		}
-		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == funcKeys.modKey) // now this is where things get a little tricky. this function checks whether the mouse pointer was moved
+		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == funcKeys.modKey)
 		{
-			//setting up vars for the x and y difference which will be used for resizing or moving the window
 			int xDiff = ev.xbutton.x_root - start.xbutton.x_root;
 			int yDiff = ev.xbutton.y_root - start.xbutton.y_root;
 
-			//long ass complicated ass function to move or resize windows to where ever the user wants
+			//Long ass complicated function to move or resize windows
 			XMoveResizeWindow(dpy, start.xbutton.subwindow, attr.x + (start.xbutton.button == 1 ? xDiff : 0), attr.y + (start.xbutton.button == 1 ? yDiff : 0), MAX(1, attr.width + (start.xbutton.button == 3 ? xDiff : 0)), MAX(1, attr.height + (start.xbutton.button == 3 ? yDiff : 0)));
 			focusWin(ev.xbutton.subwindow);
 		}
+		//If the button or key is released
 		else if(ev.type == ButtonRelease || ev.type == KeyRelease)
 		{
+			//Set the subwindow to None
 			(ev.type == ButtonRelease ? start.xbutton.subwindow = None : start.xkey.subwindow = None);
 		}
 	}
 
-	//nicely shutting down the server when the user wishes to shut down the WM
+	//Nicely shutting down the display server instead of doing it forceably
 	XCloseDisplay(dpy);
 }
