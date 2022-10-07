@@ -96,14 +96,14 @@ int sys_output(char **buf, char *command) {
 
 void readConfig(char *config_path) {
 	FILE *config;
-	char *currLine = malloc(sizeof(char) * 200), *buff = malloc(sizeof(char) * 200);
+	char *currLine = malloc(sizeof(char) * 200);
+	char *buff = malloc(sizeof(char) * 200);
+	char *ptr;
 	int i = 0; //incrementer for the command array
-	int writeToBuff = 0; //flag to write contents to buffer
-	int writeCmdToBuff = 0; //special flag to detect if the current field is a command since some commands may have a period in them
+	int writeCmdToBuff = 0; //flag to detect if the current field is a command since some commands may have a period in them
 	int paramsOrScripts = 0;
 	int fieldToFill = 0;
 	int scriptField = 0;
-	char *ptr;
 
 	config = fopen(config_path, "r");
 
@@ -122,12 +122,10 @@ void readConfig(char *config_path) {
 			continue;
 		}else if(strcmp(currLine, "[BOX_PARAMETERS]\n") == 0){
 			paramsOrScripts = 0;
-			writeToBuff = 0;
 			memset(currLine, 0, sizeof(char) * 200);
 			continue;
 		}else if(strcmp(currLine, "[SCRIPTS]\n") == 0){
 			paramsOrScripts = 1;
-			writeToBuff = 0;
 			memset(currLine, 0, sizeof(char) * 200);
 			continue;
 		}else if(paramsOrScripts == 0){ //Getting box parameters
@@ -153,7 +151,6 @@ void readConfig(char *config_path) {
 						printf("INVALID FIELD \"%s\" FOUND: LINE 109\n", buff);
 						exit(1);
 					}
-					writeToBuff = (writeToBuff == 1) ? 0 : 1;
 					memset(buff, 0, sizeof(char) * 200);
 					j = 0;
 					continue;
@@ -192,22 +189,12 @@ void readConfig(char *config_path) {
 							exit(1);
 					}
 					j = 0;
-					writeToBuff = 0;
 					writeCmdToBuff = 0; //this shouldn't be toggled but just incase
 					memset(buff, 0, sizeof(char) * 200);
-					j = 0;
 					break;
 				}
-				if(writeToBuff == 1){
-					buff[j] = currLine[x];
-					j++;
-				}else if(writeToBuff == 0){
-					buff[j] = currLine[x];
-					j++;
-				}else{
-					printf("FAILED PROCESSING CONFIG: LINE 115\n");
-					exit(1);
-				}
+				buff[j] = currLine[x];
+				j++;
 			}
 		}else if(paramsOrScripts == 1){ //Getting scripts
 			for(int x = 0; x < strlen(currLine); x++){
@@ -215,7 +202,6 @@ void readConfig(char *config_path) {
 					continue;
 				}else if(currLine[x] == '=' && x + 1 != strlen(currLine) && writeCmdToBuff == 0){
 					j = 0;
-					writeToBuff = 1;
 					scriptField = 1;
 					memset(buff, 0, sizeof(char) * 200);
 					continue;
@@ -224,7 +210,6 @@ void readConfig(char *config_path) {
 					j = 0;
 					scriptField = 0;
 					memset(buff, 0, sizeof(char) * 200);
-					writeToBuff = 0;
 					continue;
 				}else if(currLine[x] == ',' && writeCmdToBuff == 0){
 					if(scriptField == 1){
@@ -245,17 +230,9 @@ void readConfig(char *config_path) {
 				}else if(currLine[x] == '`'){
 					writeCmdToBuff = (writeCmdToBuff == 0) ? 1 : 0;
 					continue;
-				}else if(writeToBuff == 1 && writeCmdToBuff == 1){
-					buff[j] = currLine[x];
-					j++;
-				}else if(writeToBuff == 1){
-					buff[j] = currLine[x];
-					j++;
-				}else if(writeToBuff == 0){
-					printf("yes");
 				}else{
-					printf("FAILED PROCESSING CONFIG: LINE 214\n");
-					exit(1);
+					buff[j] = currLine[x];
+					j++;
 				}
 			}
 			i++;
@@ -264,6 +241,10 @@ void readConfig(char *config_path) {
 	numCmds = i;
 
 	fclose(config);
+
+	if(config != NULL){
+		printf("YOUR CONFIG FILE FAILED TO CLOSE");
+	}
 }
 
 void init() {
