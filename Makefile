@@ -2,6 +2,12 @@ all:
 	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
 	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
 
+wm:
+	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
+
+box:
+	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
+
 install:
 	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
 	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
