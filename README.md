@@ -19,6 +19,7 @@ If you want to add the default configs to your .config directory type
 * find a way to have multiple keypresses complete an action
 * moving windows around / resizing windows with the keyboard??
 * tiling feature
+* COMMENT THINGS BETTER
 
 ## Projects that helped me when I was lost
 I've been needing to add this because I've felt like shit not giving them some kind of credit.
