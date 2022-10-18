@@ -1,19 +1,19 @@
 all:
-	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
-	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
+	cc MelonWM.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonWM
+	cc MelonSeed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonSeed
 
 wm:
-	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
+	cc MelonWM.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonWM
 
 box:
-	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
+	cc MelonSeed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonSeed
 
 install:
-	c++ melon.cpp -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o melon
-	cc seed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o seed
-	install -m 755 melon /usr/local/bin/melon
-	install -m 755 seed /usr/local/bin/seed
+	cc MelonWM.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonWM
+	cc MelonSeed.c -Wall -I/usr/X11R6/include -L/usr/X11R6/lib -lX11 -Ofast -o MelonSeed
+	install -m 755 MelonWM /usr/local/bin/MelonWM
+	install -m 755 MelonSeed /usr/local/bin/MelonSeed
 
 config:
-	install melon.conf ~/.config/melon/
-	install seed.conf ~/.config/melon/
+	install MelonWM.conf ~/.config/MelonWM/
+	install MelonSeed.conf ~/.config/MelonWM/
