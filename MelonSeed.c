@@ -218,8 +218,7 @@ void readConfig(char *config_path) {
 void init() {
 	dpy = XOpenDisplay(NULL);
 	scr = DefaultScreen(dpy);
-
-	win = XCreateSimpleWindow(dpy, RootWindow(dpy, scr), boxParams.x_coord, boxParams.y_coord, boxParams.wid, boxParams.hgt, 0, boxParams.foregroundColor, boxParams.backgroundColor);
+	win = XCreateSimpleWindow(dpy, RootWindow(dpy, scr), boxParams.x_coord, boxParams.y_coord, boxParams.wid, boxParams.hgt, 1, boxParams.foregroundColor, boxParams.backgroundColor);
 
 	XSelectInput(dpy, win, ExposureMask);
 	XMapWindow(dpy, win);
@@ -230,6 +229,13 @@ void init() {
 	XSetBackground(dpy, gc, boxParams.backgroundColor);
 	XFontStruct *font = XLoadQueryFont(dpy, "fixed");
 	XSetFont(dpy, gc, font->fid);
+
+	XChangeProperty(dpy, win, XInternAtom(dpy, "WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
+	XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
+	XChangeProperty(dpy, win, XInternAtom(dpy, "WM_CLASS", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
+	//XChangeProperty(dpy, win, XInternAtom(dpy, "WM_ICON_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
+	//XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ICON_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
+	XChangeProperty(dpy,win, XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False), XA_WINDOW, 32, PropModeAppend, (unsigned char *)&win, 1);
 }
 
 int sys_output(char **buf, char *command) {
@@ -247,7 +253,7 @@ int sys_output(char **buf, char *command) {
 
         /* Copy the command into the buffer */
         size = strlen(output);
-        *buf = malloc(size);
+        *buf = malloc(size + 1);
         strcpy(*buf, output);
         (*buf)[size - 1] = '\0';
 
