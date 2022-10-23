@@ -1,12 +1,12 @@
-//Headers needed to make things work
-//I can probably get rid of some of these and
-//probably will sometime in the future
+//This is a mess
+//I don't know what I'm doing
+//How do I get out of here
+//Please help
 
 #include "common.h"
 
 //This is used in resizing and moving windows
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
-#define WM_NAME "MelonWM"
 
 //This holds all data that I'd need to manipulate windows
 typedef struct Client
@@ -17,7 +17,7 @@ typedef struct Client
 	unsigned int dimensions[2]; //0 = wid, 1 = hgt
 	unsigned long int borderColor;
 	int isMini;
-	unsigned long indPrev, indNext; //the previous and next client in the list
+	unsigned long indPrev; //the previous client in the list
 } Client;
 
 //Stores all the keys that perform important functions
@@ -34,7 +34,7 @@ struct _FunctionKeys{
 
 typedef struct _FunctionKeys FunctionKeys;
 
-//Initing variables. I know I should make these as local as possible.
+//Declaring variables. I know I should make these as local as possible.
 //I'll be working on that sometime soon because it bothers me too.
 Display *dpy;
 XWindowAttributes attr;
@@ -48,6 +48,8 @@ size_t numClients = 0;
 FunctionKeys funcKeys;
 FILE *logFile = NULL;
 
+//This reads the config file
+//It's really inefficient but works I guess
 void readConfig()
 {
 	FILE *config;
@@ -56,9 +58,7 @@ void readConfig()
 	char *ptr;
 	int fieldToFill = 0;
 
-
 	config = fopen(configPath, "r");
-
 
 	if(config == NULL)
 	{
@@ -160,7 +160,7 @@ void readConfig()
 									funcKeys.modKey = Mod5Mask;
 									break;
 								default:
-									funcKeys.modKey = Mod4Mask;
+									funcKeys.modKey = None;
 									break;
 							}
 							break;
@@ -286,46 +286,27 @@ int init() // inits the server and its basic attributes
 	}
 
 	fprintf(logFile, "%ld: OPENING DISPLAY AND SETTING UP INPUTS\n", clock());
+
+	//Screen and root window
 	scr = XDefaultScreen(dpy);
 	root = XDefaultRootWindow(dpy);
+
+	//Defining a default cursor
 	XDefineCursor(dpy, root, XCreateFontCursor(dpy, 1));
+
+	//Setting up the error handler
 	XSetErrorHandler(errHandle);
-	XSelectInput(dpy, root, ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|PointerMotionMask|SubstructureNotifyMask); // telling X to accept these types of inputs as valid
 
-	// telling X to monitor these keys/buttons for input events
+	//Telling X what inputs to accept
+	XSelectInput(dpy, root, ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|PointerMotionMask|SubstructureNotifyMask); 
+	
+	//Setting up some atoms for the wm
+	(void)XChangeProperty(dpy, root, XInternAtom(dpy, "_NET_WM_NAME", False), XInternAtom(dpy, "UTF8_STRING", False), 8, PropModeReplace, (unsigned char *)"MelonWM", 7);
+	(void)XChangeProperty(dpy, root, XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False), XA_WINDOW, 32, PropModeAppend, (unsigned char *)&root, 1);
 
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("a")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("b")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("c")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("d")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("e")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("f")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("g")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("h")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("i")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("j")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("k")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("l")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("m")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("n")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("o")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("p")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("q")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("r")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("s")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("t")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("u")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("v")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("w")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("x")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("y")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabKey(dpy, XKeysymToKeycode(dpy, XStringToKeysym("z")), funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabButton(dpy, 1, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 2, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 3, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 4, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 5, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
-	XGrabButton(dpy, 9, None, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+	// telling X to monitor keys/buttons with a mod key for input events
+	XGrabKey(dpy, AnyKey, funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
+	XGrabButton(dpy, AnyButton, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
 	fprintf(logFile, "%ld: FINISHED INIT PROCESS\n", clock());
 	return 0;
@@ -335,24 +316,30 @@ void drawBorders(long unsigned int i, int thknss) // draws borders. takes in the
 {
 	XSetWindowBorder(dpy, clients[i].win, clients[i].borderColor);
 	XSetWindowBorderWidth(dpy, clients[i].win, thknss);
-	fprintf(logFile, "%ld: DREW BORDERS ON CLIENT #%ld\n", clock(), i+1);
 }
 
 void winToClient(Window win) // the client creator. packages the window being passed into a client
 {
-	numClients++;
-	fprintf(logFile, "%ld: CREATING NEW CLIENT #%ld\n", clock(), numClients);
 
+	//Get name of the window
+
+	fprintf(logFile, "%ld: ATTEMPTING TO CREATE NEW CLIENT\n", clock());
+
+	//Increment the amount of clients 
+	numClients++;
+
+	//Increase the size of the array
 	clients = realloc(clients, sizeof(Client) * numClients);
 
+	//If allocation fails
 	if(clients == NULL){
 		fprintf(logFile, "%ld: FAILED TO ALLOCATE ENOUGH MEMORY TO THE CLIENT ARRAY\nPANIC QUITTING\n", clock());
 		free(clients);
 		exit(1);
 	}
 
+	//Get the attributes for the window
 	XWindowAttributes winAt;
-
 	XGetWindowAttributes(dpy, win, &winAt);
 	clients[numClients - 1].dpy = dpy;
 	clients[numClients - 1].parent = &root;
@@ -363,8 +350,12 @@ void winToClient(Window win) // the client creator. packages the window being pa
 	clients[numClients - 1].dimensions[1] = winAt.height;
 	clients[numClients - 1].borderColor = inactiveHex;
 	clients[numClients - 1].indPrev = -1;
-	clients[numClients - 1].indNext = -1;
 	clients[numClients - 1].isMini = 0;
+
+	XTextProperty winName;
+	XGetWMName(dpy, win, &winName);
+	fprintf(logFile, "%ld: CREATED NEW CLIENT #%ld NAMED: %s\n", clock(), numClients, winName.value);
+
 
 	drawBorders(numClients - 1, inactBorderThcknss);
 }
@@ -393,12 +384,11 @@ void focusWin(Window win) // changes the focused window
 	{
 		clients[i].indPrev = lastFocusedClient;	// setting the current client as the last focused for the next execution of this function
 		clients[clients[i].indPrev].borderColor = inactiveHex;
-		clients[clients[i].indPrev].indNext = i;
 
 		drawBorders(clients[i].indPrev, inactBorderThcknss);
+		fprintf(logFile, "%ld: FOCUS SWITCHED FROM CLIENT #%ld TO CLIENT #%ld\n", clock(), clients[i].indPrev + 1, i + 1);
 	}
 
-	fprintf(logFile, "%ld: FOCUS SWITCHED FROM CLIENT #%ld TO CLIENT #%ld\n", clock(), clients[i].indPrev + 1, i + 1);
 
 	//setting the borders of the current window
 	clients[i].borderColor = activeHex;
@@ -448,9 +438,14 @@ void killWin(Window win) //kills the client
 
 	XSendEvent(dpy, clients[i].win, False, NoEventMask, &evnt);
 
-	numClients--;
+
+	fprintf(logFile, "%ld: DELETING CLIENT #%ld FROM THE LIST\n", clock(), i + 1);
+
+	if(numClients > 1){
+		numClients--;
+	}
+
 	clients = realloc(clients, sizeof(Client) * numClients);
-	fprintf(logFile, "%ld: DELETING CLIENT #%ld FROM THE LIST\n", clock(), i);
 
 	if(clients == NULL){
 		fprintf(logFile, "%ld: FAILED TO ALLOCATE ENOUGH MEMORY TO THE CLIENT ARRAY\nPANIC QUITTING\n", clock());
@@ -523,7 +518,7 @@ void  minimizeWin(Window win)
 	clients[i].isMini = 1;
 }
 
-//And heres the main function
+//And heres the big boy
 int main(int argc, char **argv){ 
 	//Get the users home directory
 	char *userHome = getenv("HOME");
@@ -547,7 +542,6 @@ int main(int argc, char **argv){
 
 
 	//Check if the config path is blank in case the user ran the program with no config
-	fprintf(logFile, "%ld: WM START\n", clock());
 	if(configPath != NULL){
 		fprintf(logFile, "%ld: NONNULL CONFIG PATH, READING FROM %s\n", clock(), configPath);
 		readConfig();
@@ -564,10 +558,11 @@ int main(int argc, char **argv){
 	start.xbutton.subwindow = None;
 	start.xkey.subwindow = None;
 
-	//Commented out for now. Working on getting this fixed
-	//system("seed &");
+	fprintf(logFile, "%ld: WM START\n", clock());
 
-	//The main loop that everything takes place in
+	//The big one
+	//I need to turn most of these things into their own
+	//function but that'll take a bit to do.
 	while(1)
 	{
 		//Grabs next event
@@ -602,19 +597,19 @@ int main(int argc, char **argv){
 				XSetInputFocus(dpy, start.xkey.subwindow, RevertToParent, CurrentTime);
 			}
 
-			if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWinKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey)))
+			if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.killWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey)) && start.xkey.state == funcKeys.modKey))
 			{
 				fprintf(logFile, "%ld: KILL WINDOW CALLED\n", clock());
 				//Kills the selected window
 				killWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.focusWinKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey)))
+			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.focusWinKey) && start.xbutton.state == funcKeys.modKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey)) && start.xkey.state == funcKeys.modKey)
 			{
 				fprintf(logFile, "%ld: FOCUS WINDOW CALLED\n", clock());
 				//Raises and focuses the window
 				focusWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.restoreWinKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey)))
+			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.restoreWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey)) && start.xkey.state == funcKeys.modKey))
 			{
 				fprintf(logFile, "%ld: RESTORE WINDOW CALLED\n", clock());
 				//Checks if the window is already minimized
@@ -624,7 +619,7 @@ int main(int argc, char **argv){
 					restoreWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 				}
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.miniWinKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.miniWinKey)))
+			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.miniWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.miniWinKey)) && start.xkey.state == funcKeys.modKey))
 			{
 				fprintf(logFile, "%ld: MINIMIZE WINDOW CALLED\n", clock());
 				//Checks if the window is not minimized
@@ -634,7 +629,7 @@ int main(int argc, char **argv){
 					minimizeWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
 				}
 			}
-			else if(start.type == ButtonPress ? start.xbutton.button == atoi(funcKeys.killWMKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWMKey)))
+			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.killWMKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWMKey)) && start.xkey.state == funcKeys.modKey))
 			{
 				fprintf(logFile, " %ld: KILL WM CALLED\n", clock());
 				//Kills the WM
@@ -643,7 +638,6 @@ int main(int argc, char **argv){
 		}
 		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == funcKeys.modKey)
 		{
-			fprintf(logFile, "%ld: MOVE/RESIZE WINDOW CALLED\n", clock());
 			int xDiff = ev.xbutton.x_root - start.xbutton.x_root;
 			int yDiff = ev.xbutton.y_root - start.xbutton.y_root;
 
@@ -654,9 +648,14 @@ int main(int argc, char **argv){
 		//If the button or key is released
 		else if(ev.type == ButtonRelease || ev.type == KeyRelease)
 		{
-			fprintf(logFile, "%ld: BUTTON/KEY RELEASED\n", clock());
 			//Set the subwindow to None
 			(ev.type == ButtonRelease ? start.xbutton.subwindow = None : start.xkey.subwindow);
+		}
+		else if(ev.type == DestroyNotify)
+		{
+			//Remove the client of the window that was destroyed
+			fprintf(logFile, "%ld: CLIENT DELETION DETECTED\n", clock());
+			killWin(ev.xdestroywindow.window);
 		}
 	}
 
