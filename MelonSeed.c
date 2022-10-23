@@ -11,10 +11,23 @@ typedef struct BoxParams {
 	unsigned long int backgroundColor, foregroundColor;
 }BoxParams;
 
+//Implementing this soon
+typedef struct _BoxProps {
+	Display *dpy;
+	int scr;
+	Window win;
+	GC gc;
+	Command *commands;
+	int numCmds;
+	BoxParams boxParams;
+	char *configPath, *logFilePath;
+} BoxProps_default;
+
 Display *dpy;
 int scr;
 Window win;
-GC gc; int numCmds;
+GC gc; 
+int numCmds;
 Command commands[100];
 BoxParams boxParams;
 char *config_path = NULL; 
@@ -233,8 +246,6 @@ void init() {
 	XChangeProperty(dpy, win, XInternAtom(dpy, "WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
 	XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
 	XChangeProperty(dpy, win, XInternAtom(dpy, "WM_CLASS", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
-	//XChangeProperty(dpy, win, XInternAtom(dpy, "WM_ICON_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
-	//XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_ICON_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
 	XChangeProperty(dpy,win, XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False), XA_WINDOW, 32, PropModeAppend, (unsigned char *)&win, 1);
 }
 
