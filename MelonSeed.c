@@ -1,27 +1,4 @@
-#include "common.h"
-
-typedef struct Command {
-	char command[200];
-	unsigned int x, y;
-}Command;
-
-typedef struct BoxParams {
-	long refreshRate;
-	int wid, hgt, x_coord, y_coord;
-	unsigned long int backgroundColor, foregroundColor;
-}BoxParams;
-
-//Implementing this soon
-typedef struct _BoxProps {
-	Display *dpy;
-	int scr;
-	Window win;
-	GC gc;
-	Command *commands;
-	int numCmds;
-	BoxParams boxParams;
-	char *configPath, *logFilePath;
-} BoxProps_default;
+#include "Melon.c"
 
 Display *dpy;
 int scr;
@@ -30,58 +7,20 @@ GC gc;
 int numCmds;
 Command commands[100];
 BoxParams boxParams;
+FontContext fontCtx;
+char *font;
 char *config_path = NULL; 
-
-int findRequestType(char *argv){
-	if(strcmp(argv, "-h") == 0 || strcmp(argv, "--help") == 0){
-		return 0;
-	}else if(strcmp(argv, "-c") == 0){
-		return 1;
-	}else if(strcmp(argv, "-n") == 0){
-		return 2;
-	}else{
-		return -1;
-	}
-}
-
-int processFlags(int argc, char **argv){
-	if(argc == 0)
-		return 1;
-
-	for(int i = 1; i < argc; i++){
-		int request = findRequestType(argv[i]);
-
-		switch(request){
-			case 0:
-				fprintf(stdout, "SEED STATUS BOX\n");
-				fprintf(stdout, "  -c /path/to/file  Uses a specific path for config\n");
-				fprintf(stdout, "  -n                Runs without a config file\n");
-				fprintf(stdout, "  -h                Shows this message\n");
-				exit(1);
-			case 1:
-				i++;
-				config_path = argv[i];
-				break;
-			case 2:
-				//free(config_path);
-				break;
-			default:
-				fprintf(stdout, "Invalid flag \"%s\"\n", argv[i]);
-				fprintf(stdout, "Check -h for more information\n");
-				exit(1);
-		}
-	}
-	return 0;
-}
-
+char *logFilePath = NULL;
+FILE *logFile;
 
 void readConfig(char *config_path) {
+
 	FILE *config;
 	char *currLine = malloc(sizeof(char) * 200);
 	char *buff = malloc(sizeof(char) * 200);
 	char *ptr;
 	int i = 0; //incrementer for the command array
-	int writeCmdToBuff = 0; //flag to detect if the current field is a command since some commands may have a period in them
+	int writeException = 0; //flag to detect if the current field is a command since some commands may have a period in them
 	int paramsOrScripts = 0;
 	int fieldToFill = 0;
 	int scriptField = 0;
@@ -113,7 +52,7 @@ void readConfig(char *config_path) {
 			for(int x = 0; x < strlen(currLine); x++){
 				if(currLine[x] == ' '){
 					continue;
-				}else if(currLine[x] == '='){
+				}else if(currLine[x] == '=' && writeException == 0){ //IMPLEMENT CMDBUFF
 					if(strcmp(buff, "BACKGROUND_COLOR") == 0){
 						fieldToFill = 1;
 					}else if(strcmp(buff, "FOREGROUND_COLOR") == 0){
@@ -128,21 +67,26 @@ void readConfig(char *config_path) {
 						fieldToFill = 6;
 					}else if(strcmp(buff, "BOX_Y_COORD") == 0){
 						fieldToFill = 7;
+					}else if(strcmp(buff, "FONT") == 0){
+						fieldToFill = 8;
+					}else if(strcmp(buff, "FONT_COLOR") == 0){
+						fieldToFill = 9;
 					}else{
 						printf("INVALID FIELD \"%s\" FOUND: LINE 109\n", buff);
 						exit(1);
 					}
 					memset(buff, 0, sizeof(char) * 200);
 					j = 0;
+					writeException = 0;
 					continue;
 				}else if(x == strlen(currLine) - 1){
 					switch(fieldToFill){
 						case 1:
-							boxParams.backgroundColor = strtoul(buff, &ptr, 16);
+							boxParams.backgroundColor = strtoul(convertColorString(buff), &ptr, 16);
 							fieldToFill = 0;
 							break;
 						case 2:
-							boxParams.foregroundColor = strtoul(buff, &ptr, 16);
+							boxParams.foregroundColor = strtoul(convertColorString(buff), &ptr, 16);
 							fieldToFill = 0;
 							break;
 						case 3:
@@ -165,23 +109,37 @@ void readConfig(char *config_path) {
 							boxParams.y_coord = atoi(buff);
 							fieldToFill = 0;
 							break;
+						case 8:
+							boxParams.fontCtx.fontName = malloc(sizeof(char) * strlen(buff));
+							memcpy(boxParams.fontCtx.fontName, buff, sizeof(char) * strlen(buff));
+							fieldToFill = 0;
+							break;
+						case 9:
+							boxParams.fontCtx.colorName = malloc(sizeof(char) * strlen(buff));
+							memcpy(boxParams.fontCtx.colorName , buff, sizeof(char) * strlen(buff));
+							fieldToFill = 0;
+							break;
+							
 						default:
 							printf("INVALID ASSIGNMENT \"%s\" to field %d: LINE 141", buff, fieldToFill);
 							exit(1);
 					}
 					j = 0;
-					writeCmdToBuff = 0; //this shouldn't be toggled but just incase
+					writeException = 0;
 					memset(buff, 0, sizeof(char) * 200);
 					break;
+				}else if(currLine[x] == '`'){
+					writeException = (writeException == 0) ? 1 : 0;
+					continue;
 				}
 				buff[j] = currLine[x];
 				j++;
 			}
 		}else if(paramsOrScripts == 1){ //Getting scripts
 			for(int x = 0; x < strlen(currLine); x++){
-				if(currLine[x] == ' ' && writeCmdToBuff == 0){
+				if(currLine[x] == ' ' && writeException == 0){
 					continue;
-				}else if(currLine[x] == '=' && x + 1 != strlen(currLine) && writeCmdToBuff == 0){
+				}else if(currLine[x] == '=' && x + 1 != strlen(currLine) && writeException == 0){
 					j = 0;
 					scriptField = 1;
 					memset(buff, 0, sizeof(char) * 200);
@@ -192,7 +150,7 @@ void readConfig(char *config_path) {
 					scriptField = 0;
 					memset(buff, 0, sizeof(char) * 200);
 					continue;
-				}else if(currLine[x] == ',' && writeCmdToBuff == 0){
+				}else if(currLine[x] == ',' && writeException == 0){
 					if(scriptField == 1){
 						memcpy(commands[i].command, buff, sizeof(char) * 200);
 						j = 0;
@@ -209,7 +167,7 @@ void readConfig(char *config_path) {
 						exit(1);
 					}
 				}else if(currLine[x] == '`'){
-					writeCmdToBuff = (writeCmdToBuff == 0) ? 1 : 0;
+					writeException = (writeException == 0) ? 1 : 0;
 					continue;
 				}else{
 					buff[j] = currLine[x];
@@ -224,24 +182,47 @@ void readConfig(char *config_path) {
 	fclose(config);
 
 	if(config != NULL){
-		printf("YOUR CONFIG FILE FAILED TO CLOSE");
+		printf("YOUR CONFIG FILE FAILED TO CLOSE\n");
 	}
 }
 
+void drawInit(){ //INIT ALL YOUR XFT DRAWING SHIT HERE OR YOUR BOX WILL SEGFAULT
+
+	//create the gc
+	gc = XCreateGC(dpy, win, 0, 0);
+	
+	//get the font
+	boxParams.fontCtx.font = XftFontOpenName(dpy, scr, boxParams.fontCtx.fontName);
+
+	//get default things needed for drawing the text
+	boxParams.fontCtx.vis = DefaultVisual(dpy, scr);
+	boxParams.fontCtx.colorMap = DefaultColormap(dpy, scr);
+
+	//allocate font color
+	XftColorAllocName(dpy, boxParams.fontCtx.vis, boxParams.fontCtx.colorMap, boxParams.fontCtx.colorName, &boxParams.fontCtx.fontColor);
+}
+
 void init() {
+
+	//create display stuff
 	dpy = XOpenDisplay(NULL);
 	scr = DefaultScreen(dpy);
 	win = XCreateSimpleWindow(dpy, RootWindow(dpy, scr), boxParams.x_coord, boxParams.y_coord, boxParams.wid, boxParams.hgt, 1, boxParams.foregroundColor, boxParams.backgroundColor);
 
+	//tell the window to ignore all inputs
 	XSelectInput(dpy, win, ExposureMask);
+
+	//actually make the window
 	XMapWindow(dpy, win);
 	XFlush(dpy);
 
-	gc = XCreateGC(dpy, win, 0, 0);
+	//init all the things needed to draw text
+	drawInit();
+
+	//set the windows fg and bg
 	XSetForeground(dpy, gc, boxParams.foregroundColor);
 	XSetBackground(dpy, gc, boxParams.backgroundColor);
-	XFontStruct *font = XLoadQueryFont(dpy, "fixed");
-	XSetFont(dpy, gc, font->fid);
+	//parsefonts(boxParams.font);
 
 	XChangeProperty(dpy, win, XInternAtom(dpy, "WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
 	XChangeProperty(dpy, win, XInternAtom(dpy, "_NET_WM_NAME", False), XA_STRING, 8, PropModeReplace, (unsigned char *)"MelonSeed", 9);
@@ -277,27 +258,39 @@ void draw() {
 	XClearWindow(dpy, win);
 
 	char *output = NULL;
+	boxParams.fontCtx.draw = XftDrawCreate(dpy, win, boxParams.fontCtx.vis, boxParams.fontCtx.colorMap);
+	XGlyphInfo ext;
 
 	for(int i = 0; i < numCmds ; i++){
 		size_t len = sys_output(&output, commands[i].command) - 1;
-		XDrawString(dpy, win, gc, commands[i].x, commands[i].y, output, len);
+		//XDrawString(dpy, win, gc, commands[i].x, commands[i].y, output, len); //the old way of doing this just incase something breaks
+
+		XftTextExtentsUtf8(dpy, boxParams.fontCtx.font, (XftChar8 *)output, len, &ext);
+		XftDrawStringUtf8(boxParams.fontCtx.draw, &boxParams.fontCtx.fontColor, boxParams.fontCtx.font, commands[i].x, commands[i].y, (XftChar8 *)output, len);
 		free(output);
 	}
+
+	XftDrawDestroy(boxParams.fontCtx.draw);
 
 	XSync(dpy, True);
 }
 
 int main(int argc, char **argv) {
-	config_path = getenv("HOME");
-	strcat(config_path, "/.config/MelonWM/MelonSeed.conf");
+	config_path = getPath("HOME", "/.config/MelonWM/MelonSeed.conf");
+	logFilePath = getPath("HOME", "/.local/share/MelonSeed.log");
 
-	processFlags(argc, argv);
+	logFile = fopen(logFilePath, "w");
+	logFile = freopen(logFilePath, "r", logFile);
 
-	if(config_path != NULL)
+	processFlags(argc, argv, &config_path, logFilePath, &logFile);
+
+	if(config_path != NULL){
 		readConfig(config_path);
+	}
 
 	init();
 
+	//Check for initial expose event
 	int checkIfExpose = 0;
 
 	while(checkIfExpose == 0) {
