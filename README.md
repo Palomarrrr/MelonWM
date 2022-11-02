@@ -10,13 +10,17 @@ then as root
 `# make install`
 If you want to add the default configs to your .config directory type
 `$ make config`
+You can clean the local copies of the binary by typing 
+`$ make clean`
+And you can completely uninstall it by typing
+`# make uninstall`
+You can also test the wm in Xephyr by typing
+`$ make test`
 
 ## TO DO LIST 
 (This will grow as I think of more things to do)
 
 * MAKE THIS THING EWMH COMPLIANT SO I CAN ADD MORE THINGS 
-* make the log file a little more descriptive
-* find a way to have multiple keypresses complete an action
 * moving windows around / resizing windows with the keyboard??
 * tiling feature
 * COMMENT THINGS BETTER
