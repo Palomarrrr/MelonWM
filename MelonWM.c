@@ -3,36 +3,15 @@
 //How do I get out of here
 //Please help
 
-#include "common.h"
+//TEMPORARY TODO LIST:
+//
+//FIX CHARACTER CODES FROM BEING IN BASE 10 TO BASE 16
+
+#include "Melon.c"
 
 //This is used in resizing and moving windows
 #define MAX(a, b) ((a) > (b) ? (a) : (b))
 
-//This holds all data that I'd need to manipulate windows
-typedef struct Client
-{
-	Display *dpy; // pointer to the display the window is active on
-	Window *parent, win; //the windows parent and the window being given an id
-	unsigned int coords[2]; //0 = x, 1 = y
-	unsigned int dimensions[2]; //0 = wid, 1 = hgt
-	unsigned long int borderColor;
-	int isMini;
-	unsigned long indPrev; //the previous client in the list
-} Client;
-
-//Stores all the keys that perform important functions
-//These all have really bad defaults just in case something breaks
-struct _FunctionKeys{
-	unsigned int modKey;
-	char *killWMKey;
-	char *focusWinKey;
-	char *miniWinKey;
-	char *restoreWinKey;
-	char *killWinKey;
-
-} FunctionKeys_default = {Mod4Mask, "e", "9", "q", "w", "2"};
-
-typedef struct _FunctionKeys FunctionKeys;
 
 //Declaring variables. I know I should make these as local as possible.
 //I'll be working on that sometime soon because it bothers me too.
@@ -40,13 +19,31 @@ Display *dpy;
 XWindowAttributes attr;
 XEvent ev, start;
 static Window root;
-int scr, inactBorderThcknss = 1, actBorderThcknss = 1;
-unsigned long int inactiveHex = 0x000000, activeHex = 0xf0fff0, lastFocusedClient, numMini;
+int scr;
+unsigned long int lastFocusedClient, numMini;
 char *configPath = NULL, *logFilePath = NULL;
 Client *clients;
 size_t numClients = 0;
-FunctionKeys funcKeys;
 FILE *logFile = NULL;
+
+unsigned int findModCode(int modNum){
+	switch(modNum){
+		case 0:
+			return None;
+		case 1:
+			return Mod1Mask;
+		case 2:
+			return Mod2Mask;
+		case 3:
+			return Mod3Mask;
+		case 4:
+			return Mod4Mask;
+		case 5:
+			return Mod5Mask;
+		default:
+			return None;
+	}
+}
 
 //This reads the config file
 //It's really inefficient but works I guess
@@ -56,216 +53,154 @@ void readConfig()
 	char *currLine = malloc(sizeof(char) * 200);
 	char *buffer = malloc(sizeof(char) * 200);
 	char *ptr;
-	int fieldToFill = 0;
+	int fieldToFill = -1;
+	int category = 0;
 
 	config = fopen(configPath, "r");
 
 	if(config == NULL)
 	{
 		fprintf(logFile, "%ld: FAILED TO OPEN CONFIG FILE\n", clock());
-		exit(1);
+	exit(1);
 	}
 
 	memset(buffer, 0, sizeof(char) * 200);
 
 	while(fgets(currLine, 200, config) != NULL)
-	{
-		int j = 0;
+		{
+			int j = 0;
 
-		if(currLine[0] == '\n' || currLine[0] == '#')
-		{
-			continue;
-		}
-		else if(strcmp(currLine, "[WM PARAMETERS]\n") == 0)
-		{
-			memset(currLine, 0, sizeof(char) * 200);
-			continue;
-		}
-		else if(strcmp(currLine, "[FUNCTION KEYS]\n") == 0)
-		{
-			memset(currLine, 0, sizeof(char) * 200);
-			continue;
-		}
-		else
-		{
-			for(int x = 0; x < strlen(currLine); x++)
+			if(currLine[0] == '\n' || currLine[0] == '#')
 			{
-				if(currLine[x] == ' ')
-				{
-					continue;
-				}
-				else if(currLine[x] == '='){
-					if(strcmp(buffer, "BORDER_INACTIVE_COLOR") == 0){
-						fieldToFill = 1;
-					}else if(strcmp(buffer, "BORDER_INACTIVE_THICKNESS") == 0){
-						fieldToFill = 2;
-					}else if(strcmp(buffer, "BORDER_ACTIVE_COLOR") == 0){
-						fieldToFill = 3;
-					}else if(strcmp(buffer, "BORDER_ACTIVE_THICKNESS") == 0){
-						fieldToFill = 4;
-					}else if(strcmp(buffer, "MODIFIER_KEY") == 0){
-						fieldToFill = 5;
-					}else if(strcmp(buffer, "KILL_WM_KEY") == 0){
-						fieldToFill = 6;
-					}else if(strcmp(buffer, "FOCUS_WINDOW_BUTTON") == 0){
-						fieldToFill = 7;
-					}else if(strcmp(buffer, "MINI_WINDOW_BUTTON") == 0){
-						fieldToFill = 8;
-					}else if(strcmp(buffer, "RESTORE_WINDOW_BUTTON") == 0){
-						fieldToFill = 9;
-					}else if(strcmp(buffer, "KILL_WINDOW_BUTTON") == 0){
-						fieldToFill = 10;
-					}else{
-						fprintf(logFile, "%ld: INVALID CONFIG FIELD FOUND: %s\n", clock(), buffer);
-						exit(1);
-					}
-					memset(buffer, 0, sizeof(char) * 200);
-					j = 0;
-					continue;
-				}
-				else if(x == strlen(currLine) - 1){
-					switch(fieldToFill){
-						case 1:
-							inactiveHex = strtoul(buffer, &ptr, 16);
-							fieldToFill = 0;
-							break;
-						case 2:
-							inactBorderThcknss = atoi(buffer);
-							fieldToFill = 0;
-							break;
-						case 3:
-							activeHex = strtoul(buffer, &ptr, 16);
-							fieldToFill = 0;
-							break;
-						case 4:
-							actBorderThcknss = atoi(buffer);
-							fieldToFill = 0;
-							break;
-						case 5:
-							funcKeys.modKey = atoi(buffer);
-							switch(funcKeys.modKey){
+				continue;
+			}
+			else if(strcmp(currLine, "[WM PARAMETERS]\n") == 0)
+			{
+				memset(currLine, 0, sizeof(char) * 200);
+				category = 0;
+				continue;
+			}
+			else if(strcmp(currLine, "[FUNCTION KEYS]\n") == 0)
+			{
+				memset(currLine, 0, sizeof(char) * 200);
+				category = 1;
+				continue;
+			}
+			else if(category == 0)
+			{
+				for(int x = 0; x < strlen(currLine); x++)
+					{
+						if(currLine[x] == ' ')
+						{
+							continue;
+						}
+						else if(currLine[x] == '='){
+							if(strcmp(buffer, "BORDER_INACTIVE_COLOR") == 0){
+								fieldToFill = COLOR_INACTIVE;
+							}else if(strcmp(buffer, "BORDER_INACTIVE_THICKNESS") == 0){
+								fieldToFill = THICKNESS_INACTIVE;
+							}else if(strcmp(buffer, "BORDER_ACTIVE_COLOR") == 0){
+								fieldToFill = COLOR_ACTIVE;
+							}else if(strcmp(buffer, "BORDER_ACTIVE_THICKNESS") == 0){
+								fieldToFill = THICKNESS_ACTIVE;
+							}else{
+								fprintf(logFile, "%ld: INVALID CONFIG FIELD FOUND: %s\n", clock(), buffer);
+								exit(1);
+							}
+							memset(buffer, 0, sizeof(char) * 200);
+							j = 0;
+							continue;
+						}
+						else if(x == strlen(currLine) - 1){
+							switch(fieldToFill){
+								case 0:
+									wmParams[COLOR_INACTIVE] = strtoul(convertColorString(buffer), &ptr, 16);
+									fieldToFill = -1;
+									break;
 								case 1:
-									funcKeys.modKey = Mod1Mask;
+									wmParams[THICKNESS_INACTIVE] = atoi(buffer);
+									fieldToFill = -1;
 									break;
 								case 2:
-									funcKeys.modKey = Mod2Mask;
+									wmParams[COLOR_ACTIVE] = strtoul(convertColorString(buffer), &ptr, 16);
+									fieldToFill = -1;
 									break;
 								case 3:
-									funcKeys.modKey = Mod3Mask;
-									break;
-								case 4:
-									funcKeys.modKey = Mod4Mask;
-									break;
-								case 5:
-									funcKeys.modKey = Mod5Mask;
+									wmParams[THICKNESS_ACTIVE] = atoi(buffer);
+									fieldToFill = -1;
 									break;
 								default:
-									funcKeys.modKey = None;
-									break;
+									fprintf(logFile, "%ld: INVALID ASSIGNMENT: %s\n", clock(), buffer);
+								exit(1);
 							}
+							j = 0;
+							memset(buffer, 0, sizeof(char) * 200);
 							break;
-						case 6:
-							funcKeys.killWMKey = (char*)malloc(200);
-							memcpy(funcKeys.killWMKey, buffer, sizeof(char) * 200);
-							fieldToFill = 0;
-							break;
-						case 7:
-							funcKeys.focusWinKey = (char*)malloc(200);
-							memcpy(funcKeys.focusWinKey, buffer, sizeof(char) * 200);
-							fieldToFill = 0;
-							break;
-						case 8:
-							funcKeys.miniWinKey = (char*)malloc(200);
-							memcpy(funcKeys.miniWinKey, buffer, sizeof(char) * 200);
-							fieldToFill = 0;
-							break;
-						case 9:
-							funcKeys.restoreWinKey = (char*)malloc(200);
-							memcpy(funcKeys.restoreWinKey, buffer, sizeof(char) * 200);
-							fieldToFill = 0;
-							break;
-						case 10:
-							funcKeys.killWinKey = (char*)malloc(200);
-							memcpy(funcKeys.killWinKey, buffer, sizeof(char) * 200);
-							fieldToFill = 0;
-							break;
-						default:
-							fprintf(logFile, "%ld: INVALID ASSIGNMENT: %s\n", clock(), buffer);
-							exit(1);
-					}
-					j = 0;
-					memset(buffer, 0, sizeof(char) * 200);
-					break;
+						}
+						buffer[j] = currLine[x];
+						j++;
 				}
-				buffer[j] = currLine[x];
-				j++;
-			}
-		}
-	}
+			}else if(category == 1){
+				int keyCategory = 0;
+				for(int x = 0; x < strlen(currLine); x++){
+					if(currLine[x] == ' '){
+						continue;
+					}else if(currLine[x] == '='){
+						if(strcmp(buffer, "EXIT_WM") == 0){
+							fieldToFill = EXIT_KEY;
+						}else if(strcmp(buffer, "FOCUS_WIN") == 0){
+							fieldToFill = FOCUS_KEY;
+						}else if(strcmp(buffer, "MINI_WIN") == 0){
+							fieldToFill = MINI_KEY;
+						}else if(strcmp(buffer, "RESTO_WIN") == 0){
+							fieldToFill = RESTO_KEY;
+						}else if(strcmp(buffer, "KILL_WIN") == 0){
+							fieldToFill = KILL_KEY;
+						}else if(strcmp(buffer, "MOVE_WIN") == 0){
+							fieldToFill = MOVE_KEY;
+						}else if(strcmp(buffer, "SIZE_WIN") == 0){
+							fieldToFill = SIZE_KEY;
+						}else{
+							fprintf(logFile, "%ld: INVALID CONFIG FIELD FOUND: %s\n", clock(), buffer);
+							exit(1);
+						}
+						memset(buffer, 0, sizeof(char) * 200);
+						j = 0;
+						continue;
+					}else if(currLine[x] == ',' && keyCategory == 0 && fieldToFill != -1){ //INPUT FIELDS
+						key[INPUT_FIELD][fieldToFill] = (strcmp(buffer, "Key") == 0) ? KeyPress : ButtonPress;
+						keyCategory++;
+						j = 0;
+						memset(buffer, 0, sizeof(char) * 200);
+						continue;
+					}else if(currLine[x] == ',' && keyCategory == 1){ //KEY FIELDS
+						if(key[INPUT_FIELD][fieldToFill] == KeyPress){
+							key[KEY_FIELD][fieldToFill] = buffer[0];
+						}else{
+							key[KEY_FIELD][fieldToFill] = atoi(buffer);
+						}
+						keyCategory++;
+						j = 0;
+						memset(buffer, 0, sizeof(char) * 200);
+						continue;
+					}else if(x == strlen(currLine) - 1){
+						key[MOD_FIELD][fieldToFill] = findModCode(atoi(buffer));
+						j = 0;
+						memset(buffer, 0, sizeof(char) * 200);
+						continue;
+					}
+					buffer[j] = currLine[x];
+					j++;
+				}
 
+			}
+	}
 
 	if(fclose(config) != 0){
 		fprintf(logFile, "%ld: FAILED TO CLOSE YOUR CONFIG FILE\n", clock());
 	}
 
 	fprintf(logFile, "%ld: FINISHED CONFIG PROCESSING\n", clock());
-}
-
-int findFlagRequest(char* argv){
-
-	if(strcmp("-h", argv) == 0 || strcmp("--help", argv) == 0){
-		return 0;
-	}
-	else if(strcmp("-c", argv) == 0){
-		return 1;
-	}
-	else if(strcmp("-n", argv) == 0){
-		return 2;
-	}
-	else if(strcmp("-l", argv) == 0){
-		return 3;
-	}else{
-		return -1;
-	}
-
-}
-
-void processFlags(int argc, char** argv){
-	if(argc == 0)
-		return;
-
-	for(int i = 1; i < argc; i++){
-		int request = findFlagRequest(argv[i]);
-
-		switch(request){
-			case 0:
-				fprintf(logFile, "%ld: -h FLAG USED\n", clock());
-				printf("MELON WINDOW MANAGER\n");
-				printf("  -c /path/to/file  Uses a specific path for config | default: %s\n", configPath);
-				printf("  -n                Runs without a config and use defaults");
-				printf("  -l                Turns the debug log on | default location: %s \n", logFilePath);
-				printf("  -h                Displays this message\n");
-				exit(1);
-			case 1:
-				fprintf(logFile, "%ld: -c FLAG USED\n", clock());
-				i++;
-				configPath = argv[i];
-				break;
-			case 2:
-				fprintf(logFile, "%ld: -n FLAG USED\n", clock());
-				configPath = NULL;
-				break;
-			case 3:
-				fprintf(logFile, "%ld: -l FLAG USED. LOG FILE SWITCHED ON\n", clock());
-				logFile = freopen(logFilePath, "w", logFile);
-				break;
-			default:
-				printf("Invalid flag: %s\n", argv[i]);
-				printf("Check -h for more information\n");
-				fprintf(logFile, "%ld: INVALID FLAG REQUEST: %s\n", clock(), argv[i]);
-				exit(1);
-		}
-	}
 }
 
 int errHandle(Display *dis, XErrorEvent *evnt) // error handler. i really dont know what this does exactly but if i remove it the wm becomes unstable so im keeping it here
@@ -276,9 +211,19 @@ int errHandle(Display *dis, XErrorEvent *evnt) // error handler. i really dont k
 	return 0;
 }
 
+void initKeys(){
+	for(int i = 0; i < LAST_KEY; i++){
+		if(key[INPUT_FIELD][i] == ButtonPress){
+			XGrabButton(dpy, key[KEY_FIELD][i], key[MOD_FIELD][i], root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
+		}else{
+			XGrabKey(dpy, XKeysymToKeycode(dpy, (char)key[KEY_FIELD][i]), key[MOD_FIELD][i], root, True, GrabModeAsync, GrabModeAsync);
+		}
+	}
+}
+
 int init() // inits the server and its basic attributes
 {
-	if(!(dpy = XOpenDisplay(NULL)))
+	if(!(dpy = XOpenDisplay(0)))
 	{
 		fprintf(logFile, "%ld: FAILED TO OPEN DISPLAY\n", clock());
 		// if X fails to open the display this message will be triggered
@@ -297,16 +242,17 @@ int init() // inits the server and its basic attributes
 	//Setting up the error handler
 	XSetErrorHandler(errHandle);
 
+	//Init only the keys needed
+	initKeys();
+
 	//Telling X what inputs to accept
 	XSelectInput(dpy, root, ExposureMask|ButtonPressMask|ButtonReleaseMask|KeyPressMask|KeyReleaseMask|PointerMotionMask|SubstructureNotifyMask); 
-	
+
 	//Setting up some atoms for the wm
 	(void)XChangeProperty(dpy, root, XInternAtom(dpy, "_NET_WM_NAME", False), XInternAtom(dpy, "UTF8_STRING", False), 8, PropModeReplace, (unsigned char *)"MelonWM", 7);
 	(void)XChangeProperty(dpy, root, XInternAtom(dpy, "_NET_SUPPORTING_WM_CHECK", False), XA_WINDOW, 32, PropModeAppend, (unsigned char *)&root, 1);
 
 	// telling X to monitor keys/buttons with a mod key for input events
-	XGrabKey(dpy, AnyKey, funcKeys.modKey, root, True, GrabModeAsync, GrabModeAsync);
-	XGrabButton(dpy, AnyButton, funcKeys.modKey, root, True, ButtonPressMask|ButtonReleaseMask|PointerMotionMask, GrabModeAsync, GrabModeAsync, None, None);
 
 	fprintf(logFile, "%ld: FINISHED INIT PROCESS\n", clock());
 	return 0;
@@ -320,9 +266,6 @@ void drawBorders(long unsigned int i, int thknss) // draws borders. takes in the
 
 void winToClient(Window win) // the client creator. packages the window being passed into a client
 {
-
-	//Get name of the window
-
 	fprintf(logFile, "%ld: ATTEMPTING TO CREATE NEW CLIENT\n", clock());
 
 	//Increment the amount of clients 
@@ -348,7 +291,7 @@ void winToClient(Window win) // the client creator. packages the window being pa
 	clients[numClients - 1].coords[1] = winAt.y;
 	clients[numClients - 1].dimensions[0] = winAt.width;
 	clients[numClients - 1].dimensions[1] = winAt.height;
-	clients[numClients - 1].borderColor = inactiveHex;
+	clients[numClients - 1].borderColor = wmParams[COLOR_INACTIVE];
 	clients[numClients - 1].indPrev = -1;
 	clients[numClients - 1].isMini = 0;
 
@@ -357,7 +300,7 @@ void winToClient(Window win) // the client creator. packages the window being pa
 	fprintf(logFile, "%ld: CREATED NEW CLIENT #%ld NAMED: %s\n", clock(), numClients, winName.value);
 
 
-	drawBorders(numClients - 1, inactBorderThcknss);
+	drawBorders(numClients - 1, wmParams[THICKNESS_INACTIVE]);
 }
 
 long unsigned int checkClient(Window win) // checkes what client is being passed and returns its index in the master list
@@ -365,11 +308,11 @@ long unsigned int checkClient(Window win) // checkes what client is being passed
 	long unsigned int i;
 
 	for(i = 0; i < numClients; i++)
-	{
-		if(clients[i].win == win)
 		{
-			return i;
-		}
+			if(clients[i].win == win)
+			{
+return i;
+			}
 	}
 
 	winToClient(win);
@@ -383,34 +326,32 @@ void focusWin(Window win) // changes the focused window
 	if(lastFocusedClient != i) // resetting the borders of the last focused window
 	{
 		clients[i].indPrev = lastFocusedClient;	// setting the current client as the last focused for the next execution of this function
-		clients[clients[i].indPrev].borderColor = inactiveHex;
+		clients[clients[i].indPrev].borderColor = wmParams[COLOR_INACTIVE];
 
-		drawBorders(clients[i].indPrev, inactBorderThcknss);
+		drawBorders(clients[i].indPrev, wmParams[THICKNESS_INACTIVE]);
 		fprintf(logFile, "%ld: FOCUS SWITCHED FROM CLIENT #%ld TO CLIENT #%ld\n", clock(), clients[i].indPrev + 1, i + 1);
 	}
 
 
 	//setting the borders of the current window
-	clients[i].borderColor = activeHex;
+	clients[i].borderColor = wmParams[COLOR_ACTIVE];
 	XSetInputFocus(dpy, clients[i].win, RevertToParent, CurrentTime);
 	XRaiseWindow(dpy, clients[i].win);
 	lastFocusedClient = i;
 
-	drawBorders(i, actBorderThcknss);
+	drawBorders(i, wmParams[THICKNESS_ACTIVE]);
 
 }
 
 void moveClientToPointer(Window win, int pointerX, int pointerY)
 {
 	long unsigned int i = checkClient(win);
-
 	XMoveWindow(dpy, clients[i].win, pointerX, pointerY);
 }
 
 void killWin(Window win) //kills the client
 {
 	long unsigned int i = checkClient(win);
-
 	XEvent evnt;
 
 	// This was weird to figure out at first but basically it sends the current window a message to politely shut off instead of being forceful and using something like XDestroyWindow()
@@ -421,7 +362,6 @@ void killWin(Window win) //kills the client
 	evnt.xclient.format = 32;
 	evnt.xclient.data.l[0] = XInternAtom(dpy, "WM_DELETE_WINDOW", True);
 	evnt.xclient.data.l[1] = CurrentTime;
-
 
 	if(clients[i].indPrev != -1)
 	{
@@ -435,9 +375,7 @@ void killWin(Window win) //kills the client
 		}
 	}
 
-
 	XSendEvent(dpy, clients[i].win, False, NoEventMask, &evnt);
-
 
 	fprintf(logFile, "%ld: DELETING CLIENT #%ld FROM THE LIST\n", clock(), i + 1);
 
@@ -454,6 +392,7 @@ void killWin(Window win) //kills the client
 	}
 
 }
+
 void restoreWin(Window win)
 {
 	long unsigned int i = checkClient(win); // you should get the jist of what im doing with these by now. if not scroll back up in the code and read the explanation on previous time i use these next two functions
@@ -470,6 +409,7 @@ void restoreWin(Window win)
 	}
 	clients[i].isMini = 0;
 }
+
 void maximizeWin(Window win)
 {
 	long unsigned int i = checkClient(win); // look at the function above
@@ -520,35 +460,61 @@ void  minimizeWin(Window win)
 
 //And heres the big boy
 int main(int argc, char **argv){ 
-	//Get the users home directory
-	char *userHome = getenv("HOME");
+	//get config and log file paths
+	configPath = getPath("HOME", "/.config/MelonWM/MelonWM.conf");
+	logFilePath = getPath("HOME", "/.local/share/MelonWM.log");
 
-	//Set the path for the default config file
-	configPath = malloc(sizeof(userHome) * strlen(userHome));
-	memcpy(configPath, userHome, strlen(userHome) * 8);
-	strcat(configPath, "/.config/MelonWM/MelonWM.conf");
-
-	//Set the path for the log file
-	logFilePath = malloc(sizeof(userHome) * strlen(userHome));
-	memcpy(logFilePath, userHome, strlen(userHome) * 8);
-	strcat(logFilePath, "/.local/share/MelonWM.log");
-
-	//Initialize the log file but as read only so we can block all writes to it and keep the program from segfaulting
-	logFile = fopen(logFilePath, "r");
+	//Initialize the log file
+	//Open first as write so the program doesn't segfault if the file isn't already there
+	//Then set it to read only so the program won't segfault if the user doesnt want a log file
+	logFile = fopen(logFilePath, "w");
+	logFile = freopen(logFilePath, "r", logFile);
 
 	//Process the command line flags
-	processFlags(argc, argv);
+	processFlags(argc, argv, &configPath, logFilePath, &logFile);
 	fprintf(logFile, "%ld: FINISHED PROCESSING FLAGS\n", clock());
 
 
 	//Check if the config path is blank in case the user ran the program with no config
-	if(configPath != NULL){
+	if(strcmp(configPath, "0") != 0){
 		fprintf(logFile, "%ld: NONNULL CONFIG PATH, READING FROM %s\n", clock(), configPath);
 		readConfig();
 	}else{
 		fprintf(logFile, "%ld: NULL CONFIG FILE, USING DEFAULTS\n", clock());
-		funcKeys = FunctionKeys_default;
+		wmParams[COLOR_INACTIVE] = 0x000000;
+		wmParams[THICKNESS_INACTIVE] = 2;
+		wmParams[COLOR_ACTIVE] = 0x00ff00;
+		wmParams[THICKNESS_ACTIVE] = 2;
+
+		key[INPUT_FIELD][EXIT_KEY] = ButtonPress;
+		key[KEY_FIELD][EXIT_KEY] = 1;
+		key[MOD_FIELD][EXIT_KEY] = Mod1Mask;
+
+		key[INPUT_FIELD][FOCUS_KEY] = KeyPress;
+		key[KEY_FIELD][FOCUS_KEY] = XK_f;
+		key[MOD_FIELD][FOCUS_KEY] = Mod4Mask;
+		
+		key[INPUT_FIELD][MINI_KEY] = KeyPress;
+		key[KEY_FIELD][MINI_KEY] = XK_a;
+		key[MOD_FIELD][MINI_KEY] = Mod4Mask;
+
+		key[INPUT_FIELD][RESTO_KEY] = KeyPress;
+		key[KEY_FIELD][RESTO_KEY] = XK_s;
+		key[MOD_FIELD][RESTO_KEY] = Mod4Mask;
+
+		key[INPUT_FIELD][KILL_KEY] = KeyPress;
+		key[KEY_FIELD][KILL_KEY] = XK_q;
+		key[MOD_FIELD][KILL_KEY] = Mod4Mask;
+
+		key[INPUT_FIELD][MOVE_KEY] = ButtonPress;
+		key[KEY_FIELD][MOVE_KEY] = 1;
+		key[MOD_FIELD][MOVE_KEY] = Mod4Mask;
+
+		key[INPUT_FIELD][SIZE_KEY] = ButtonPress;
+		key[KEY_FIELD][SIZE_KEY] = 3;
+		key[MOD_FIELD][SIZE_KEY] = Mod4Mask;
 	}
+	
 
 	//Start the display server
 	fprintf(logFile, "%ld: INITING XORG\n", clock());
@@ -564,99 +530,106 @@ int main(int argc, char **argv){
 	//I need to turn most of these things into their own
 	//function but that'll take a bit to do.
 	while(1)
-	{
-		//Grabs next event
-		XNextEvent(dpy, &ev);
-
-		//Checks if a window has just been mapped, scans the available clients to check if it
-		if(ev.type == CreateNotify)
 		{
-			//Create a new client for the window created
-			fprintf(logFile, "%ld: CLIENT CREATION DETECTED\n", clock());
-			winToClient(ev.xcreatewindow.window);
-			//This breaking shit so I removed it for now
-			//moveClientToPointer(ev.xcreatewindow.window, ev.xbutton.x_root, ev.xbutton.y_root);
-		}
-		//Checking whether a button was pressed and also if theres a window that exists where the button was pressed
-		else if((ev.type == ButtonPress && ev.xbutton.subwindow != None) || (ev.type == KeyPress && ev.xkey.subwindow != None))
-		{
-			//Save a copy of the current event. This will be used later for things like moving and resizing windows
-			start = ev;
+			//Grabs next event
+			XNextEvent(dpy, &ev);
 
-			//Assigns attributes based whether a key or mouse button was pressed
-			if(start.type == ButtonPress)
+			//Checks if a window has just been mapped, scans the available clients to check if it
+			if(ev.type == CreateNotify)
 			{
-				fprintf(logFile, "%ld: BUTTON PRESS DETECTED\n", clock());
-				XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
-				XSetInputFocus(dpy, start.xbutton.subwindow, RevertToParent, CurrentTime);
+				//Create a new client for the window created
+				fprintf(logFile, "%ld: CLIENT CREATION DETECTED\n", clock());
+				winToClient(ev.xcreatewindow.window);
+				//This breaking shit so I removed it for now
+				//moveClientToPointer(ev.xcreatewindow.window, ev.xbutton.x_root, ev.xbutton.y_root);
 			}
-			else if(start.type == KeyPress)
+			//Checking whether a button was pressed and also if theres a window that exists where the button was pressed
+			else if((ev.type == ButtonPress && ev.xbutton.subwindow != None) || (ev.type == KeyPress && ev.xkey.subwindow != None))
 			{
-				fprintf(logFile, "%ld: KEY PRESS DETECTED\n", clock());
-				XGetWindowAttributes(dpy, start.xkey.subwindow, &attr);
-				XSetInputFocus(dpy, start.xkey.subwindow, RevertToParent, CurrentTime);
-			}
 
-			if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.killWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWinKey)) && start.xkey.state == funcKeys.modKey))
-			{
-				fprintf(logFile, "%ld: KILL WINDOW CALLED\n", clock());
-				//Kills the selected window
-				killWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
-			}
-			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.focusWinKey) && start.xbutton.state == funcKeys.modKey) : start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.focusWinKey)) && start.xkey.state == funcKeys.modKey)
-			{
-				fprintf(logFile, "%ld: FOCUS WINDOW CALLED\n", clock());
-				//Raises and focuses the window
-				focusWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
-			}
-			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.restoreWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.restoreWinKey)) && start.xkey.state == funcKeys.modKey))
-			{
-				fprintf(logFile, "%ld: RESTORE WINDOW CALLED\n", clock());
-				//Checks if the window is already minimized
-				if(attr.height == 15 && attr.width == 15)
+				//Save a copy of the current event. This will be used later for things like moving and resizing windows
+				start = ev;
+
+				//Assigns attributes based whether a key or mouse button was pressed
+				if(start.type == ButtonPress){
+					fprintf(logFile, "%ld: BUTTON PRESS (%d) DETECTED\n", clock(), start.xbutton.button);
+					XGetWindowAttributes(dpy, start.xbutton.subwindow, &attr);
+					XSetInputFocus(dpy, start.xbutton.subwindow, RevertToParent, CurrentTime);
+				}else if(start.type == KeyPress){
+					fprintf(logFile, "%ld: KEY PRESS (%c) DETECTED\n", clock(), (char)start.xkey.keycode);
+					XGetWindowAttributes(dpy, start.xkey.subwindow, &attr);
+					XSetInputFocus(dpy, start.xkey.subwindow, RevertToParent, CurrentTime);
+				}
+
+				if(start.type == ButtonPress ? (start.xbutton.button == key[KEY_FIELD][KILL_KEY] && start.xbutton.state == key[MOD_FIELD][KILL_KEY]) : (start.xkey.keycode == XKeysymToKeycode(dpy, key[KEY_FIELD][KILL_KEY]) && start.xkey.state == key[MOD_FIELD][KILL_KEY]))
 				{
-					//Restores the window to its previous size
-					restoreWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
+					fprintf(logFile, "%ld: KILL WINDOW CALLED\n", clock());
+					//Kills the selected window
+					killWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
+					continue;
+				}
+				else if(start.type == ButtonPress ? (start.xbutton.button == key[KEY_FIELD][FOCUS_KEY] && start.xbutton.state == key[MOD_FIELD][FOCUS_KEY]) : start.xkey.keycode == XKeysymToKeycode(dpy, key[KEY_FIELD][FOCUS_KEY]) && start.xkey.state == key[MOD_FIELD][FOCUS_KEY])
+				{
+					fprintf(logFile, "%ld: FOCUS WINDOW CALLED\n", clock());
+					//Raises and focuses the window
+					focusWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
+					continue;
+				}
+				else if(start.type == ButtonPress ? (start.xbutton.button == key[KEY_FIELD][RESTO_KEY] && start.xbutton.state == key[MOD_FIELD][RESTO_KEY]) : (start.xkey.keycode == XKeysymToKeycode(dpy, key[KEY_FIELD][RESTO_KEY]) && start.xkey.state == key[MOD_FIELD][RESTO_KEY]))
+				{
+					fprintf(logFile, "%ld: RESTORE WINDOW CALLED\n", clock());
+					//Checks if the window is already minimized
+					if(attr.height == 15 && attr.width == 15)
+					{
+						//Restores the window to its previous size
+						restoreWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
+					}
+					continue;
+				}
+				else if(start.type == ButtonPress ? (start.xbutton.button == key[KEY_FIELD][MINI_KEY] && start.xbutton.state == key[MOD_FIELD][MINI_KEY]) : (start.xkey.keycode == XKeysymToKeycode(dpy, key[KEY_FIELD][MINI_KEY]) && start.xkey.state == key[MOD_FIELD][MINI_KEY]))
+				{
+					fprintf(logFile, "%ld: MINIMIZE WINDOW CALLED\n", clock());
+					//Checks if the window is not minimized
+					if(attr.height != 15 && attr.width != 15)
+					{
+						//Minimizes the window
+						minimizeWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
+					}
+					continue;
+				}
+				else if(start.type == ButtonPress ? (start.xbutton.button == key[KEY_FIELD][EXIT_KEY] && start.xbutton.state == key[KEY_FIELD][EXIT_KEY]) : (start.xkey.keycode == XKeysymToKeycode(dpy, key[KEY_FIELD][EXIT_KEY]) && start.xkey.state == key[MOD_FIELD][EXIT_KEY]))
+				{
+					fprintf(logFile, " %ld: KILL WM CALLED\n", clock());
+					//Kills the WM
+					break;
 				}
 			}
-			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.miniWinKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.miniWinKey)) && start.xkey.state == funcKeys.modKey))
+			else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == key[MOD_FIELD][MOVE_KEY]) //VERY TEMPORARY IMPLEMENTATION
 			{
-				fprintf(logFile, "%ld: MINIMIZE WINDOW CALLED\n", clock());
-				//Checks if the window is not minimized
-				if(attr.height != 15 && attr.width != 15)
-				{
-					//Minimizes the window
-					minimizeWin(start.type == ButtonPress ? start.xbutton.subwindow : start.xkey.subwindow);
-				}
-			}
-			else if(start.type == ButtonPress ? (start.xbutton.button == atoi(funcKeys.killWMKey) && start.xbutton.state == funcKeys.modKey) : (start.xkey.keycode == XKeysymToKeycode(dpy, XStringToKeysym(funcKeys.killWMKey)) && start.xkey.state == funcKeys.modKey))
-			{
-				fprintf(logFile, " %ld: KILL WM CALLED\n", clock());
-				//Kills the WM
-				break;
-			}
-		}
-		else if(ev.type == MotionNotify && start.xbutton.subwindow != None && start.xbutton.state == funcKeys.modKey)
-		{
-			int xDiff = ev.xbutton.x_root - start.xbutton.x_root;
-			int yDiff = ev.xbutton.y_root - start.xbutton.y_root;
+				if(start.type == ButtonPress && (start.xbutton.button == key[KEY_FIELD][MOVE_KEY] || start.xbutton.button == key[KEY_FIELD][SIZE_KEY])){
+					int xDiff = ev.xbutton.x_root - start.xbutton.x_root;
+					int yDiff = ev.xbutton.y_root - start.xbutton.y_root;
 
-			//Long ass complicated function to move or resize windows
-			XMoveResizeWindow(dpy, start.xbutton.subwindow, attr.x + (start.xbutton.button == 1 ? xDiff : 0), attr.y + (start.xbutton.button == 1 ? yDiff : 0), MAX(1, attr.width + (start.xbutton.button == 3 ? xDiff : 0)), MAX(1, attr.height + (start.xbutton.button == 3 ? yDiff : 0)));
-			focusWin(ev.xbutton.subwindow);
-		}
-		//If the button or key is released
-		else if(ev.type == ButtonRelease || ev.type == KeyRelease)
-		{
-			//Set the subwindow to None
-			(ev.type == ButtonRelease ? start.xbutton.subwindow = None : start.xkey.subwindow);
-		}
-		else if(ev.type == DestroyNotify)
-		{
-			//Remove the client of the window that was destroyed
-			fprintf(logFile, "%ld: CLIENT DELETION DETECTED\n", clock());
-			killWin(ev.xdestroywindow.window);
-		}
+					//Long ass complicated function to move or resize windows
+					XMoveResizeWindow(dpy, start.xbutton.subwindow, attr.x + (start.xbutton.button == key[KEY_FIELD][MOVE_KEY] ? xDiff : 0), attr.y + (start.xbutton.button == key[KEY_FIELD][MOVE_KEY] ? yDiff : 0), MAX(1, attr.width + (start.xbutton.button == key[KEY_FIELD][SIZE_KEY] ? xDiff : 0)), MAX(1, attr.height + (start.xbutton.button == key[KEY_FIELD][SIZE_KEY] ? yDiff : 0)));
+					focusWin(ev.xbutton.subwindow);
+				}
+				continue;
+			}
+			//If the button or key is released
+			else if(ev.type == ButtonRelease || ev.type == KeyRelease)
+			{
+				//Set the subwindow to None
+				(ev.type == ButtonRelease ? start.xbutton.subwindow = None : start.xkey.subwindow);
+				continue;
+			}
+			else if(ev.type == DestroyNotify)
+			{
+				//Remove the client of the window that was destroyed
+				fprintf(logFile, "%ld: CLIENT DELETION DETECTED\n", clock());
+				killWin(ev.xdestroywindow.window);
+				continue;
+			}
 	}
 
 	//Nicely shutting down the display server instead of doing it forceably
