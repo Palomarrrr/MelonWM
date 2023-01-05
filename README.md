@@ -1,7 +1,7 @@
 # MelonWM
 A really bad wm that I made because why not.
-Currently very WIP but I've been spending a lot of time on it recently.
-Theres definitely better ways to go about some thing I've done.
+
+**CURRENTLY WORKING ON A REWRITE TO HOPEFULLY GET RID OF ALL THE SPAGHETTI MESS THATS MAKING IT REALLY HARD TO UPGRADE THINGS AND ADD FEATURES**
 
 ## Compiling
 If for some reason you want to look at the wm, use the included Makefile. First type 
